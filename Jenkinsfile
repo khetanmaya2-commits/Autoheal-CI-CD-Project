@@ -67,13 +67,39 @@ pipeline {
             }
         }
 
+        stage('Capture Previous Version') {
+            steps {
+                script {
+                    env.PREVIOUS_VERSION = bat(
+                        script: '''
+                            @echo off
+                            "%AWS_CLI%" elasticbeanstalk describe-environments ^
+                              --environment-names "%EB_ENVIRONMENT%" ^
+                              --region "%AWS_DEFAULT_REGION%" ^
+                              --query "Environments[0].VersionLabel" ^
+                              --output text
+                        ''',
+                        returnStdout: true
+                    ).trim()
+
+                    if (!env.PREVIOUS_VERSION ||
+                        env.PREVIOUS_VERSION == 'None' ||
+                        env.PREVIOUS_VERSION == "autoheal-${env.BUILD_NUMBER}") {
+                        error("Could not determine a valid previous deployment version: ${env.PREVIOUS_VERSION}")
+                    }
+
+                    echo "Rollback target captured: ${env.PREVIOUS_VERSION}"
+                }
+            }
+        }
+
         stage('Deploy to Elastic Beanstalk') {
             steps {
                 bat '''
                     "%AWS_CLI%" elasticbeanstalk update-environment ^
                       --environment-name "%EB_ENVIRONMENT%" ^
                       --version-label "autoheal-%BUILD_NUMBER%" ^
-                      --region %AWS_DEFAULT_REGION%
+                      --region "%AWS_DEFAULT_REGION%"
                 '''
             }
         }
@@ -83,7 +109,7 @@ pipeline {
                 bat '''
                     "%AWS_CLI%" elasticbeanstalk wait environment-updated ^
                       --environment-names "%EB_ENVIRONMENT%" ^
-                      --region %AWS_DEFAULT_REGION%
+                      --region "%AWS_DEFAULT_REGION%"
                 '''
             }
         }
@@ -101,8 +127,33 @@ pipeline {
         success {
             echo 'AutoHeal CI/CD deployment completed successfully!'
         }
+
         failure {
-            echo 'AutoHeal pipeline failed. Check the console output.'
+            script {
+                if (env.PREVIOUS_VERSION &&
+                    env.PREVIOUS_VERSION != 'None' &&
+                    env.PREVIOUS_VERSION != "autoheal-${env.BUILD_NUMBER}") {
+
+                    echo "Deployment failed. Attempting rollback to ${env.PREVIOUS_VERSION}"
+
+                    bat """
+                        "%AWS_CLI%" elasticbeanstalk update-environment ^
+                          --environment-name "%EB_ENVIRONMENT%" ^
+                          --version-label "${env.PREVIOUS_VERSION}" ^
+                          --region "%AWS_DEFAULT_REGION%"
+                    """
+
+                    bat """
+                        "%AWS_CLI%" elasticbeanstalk wait environment-updated ^
+                          --environment-names "%EB_ENVIRONMENT%" ^
+                          --region "%AWS_DEFAULT_REGION%"
+                    """
+
+                    echo "Rollback command completed for ${env.PREVIOUS_VERSION}. Verify environment health."
+                } else {
+                    echo 'Rollback skipped: no valid previous version was captured.'
+                }
+            }
         }
     }
 }
