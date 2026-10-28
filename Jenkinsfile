@@ -18,6 +18,12 @@ pipeline{
                 bat 'npm test'
             }
         }
+        stage('Verify docker'){
+            steps{
+                bat 'where docker'
+                bat 'docker version'
+            }
+        }
         stage('Build Docker Image'){
             steps{
                 bat 'docker build -t autoheal:app:%BUILD_NUMBER% .'
