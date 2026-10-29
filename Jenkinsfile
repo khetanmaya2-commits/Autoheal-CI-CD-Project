@@ -34,7 +34,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                bat 'docker build -t autoheal-app:%BUILD_NUMBER% .'
+               bat 'docker build --build-arg APP_VERSION=1.2.0 -t autoheal-app:%BUILD_NUMBER% .'
             }
         }
 
@@ -114,13 +114,15 @@ pipeline {
             }
         }
 
+        
         stage('Health Check') {
             steps {
                 bat '''
-                    powershell -NoProfile -Command "$envUrl = & '%AWS_CLI%' elasticbeanstalk describe-environments --environment-names '%EB_ENVIRONMENT%' --region '%AWS_DEFAULT_REGION%' --query 'Environments[0].CNAME' --output text; if (-not $envUrl -or $envUrl -eq 'None') { throw 'Environment URL not found' }; $url = 'http://' + $envUrl + '/health'; Write-Host ('Checking ' + $url); $response = Invoke-RestMethod -Uri $url -TimeoutSec 30; if ($response.status -ne 'healthy') { throw 'Health check failed' }; Write-Host 'AutoHeal health check passed'"
+                    powershell -NoProfile -Command "$envUrl = & '%AWS_CLI%' elasticbeanstalk describe-environments --environment-names '%EB_ENVIRONMENT%' --region '%AWS_DEFAULT_REGION%' --query 'Environments[0].CNAME' --output text; if (-not $envUrl -or $envUrl -eq 'None') { throw 'Environment URL not found' }; $url = 'http://' + $envUrl + '/health'; Write-Host ('Checking ' + $url); $response = Invoke-RestMethod -Uri $url -TimeoutSec 30; if ($response.status -ne 'healthy') { throw 'Health check failed' }; if ($response.version -ne '9.9.9') { throw ('Unexpected version: ' + $response.version + '. Expected 1.2.0') }; Write-Host ('Health check passed for version ' + $response.version)"
                 '''
             }
         }
+
     }
 
     post {
