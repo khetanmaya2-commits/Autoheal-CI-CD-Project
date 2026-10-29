@@ -21,7 +21,9 @@ AutoHeal demonstrates how DevOps practices can make application deployments more
 - **Health Checks:** Verifies the application's `/health` endpoint after deployment.
 - **Rollback Mechanism:** Attempts to redeploy the previously active version when a pipeline failure occurs.
 - **Rollback Verification:** Checks the restored Elastic Beanstalk version and application health.
-- **GitHub Integration:** Uses Jenkins Poll SCM to detect repository changes.
+- **GitHub Integration:** A GitHub webhook triggers Jenkins builds when repository changes are pushed.
+
+Jenkins uses a GitHub webhook to trigger the CI/CD pipeline when changes are pushed to the repository.
 
 ## 🏗️ Architecture
 
@@ -283,14 +285,17 @@ This is a learning project. Further testing is recommended before using the pipe
 The following has been verified during development:
 
 - Automated Node.js tests passed.
-- Jenkins Build #11 deployed the initial version in the recreated Elastic Beanstalk environment.
+- Jenkins Build #11 deployed the initial application version in the recreated Elastic Beanstalk environment.
 - Jenkins Build #12 deployed application version `1.2.0`.
-- The live `/health` endpoint returned a healthy response.
 - A controlled health-check failure triggered the Jenkins rollback handler.
-- The rollback console output reported that `autoheal-12` was restored and healthy.
-- The live health endpoint was confirmed working after rollback.
+- Jenkins console output reported that `autoheal-12` was restored and healthy.
+- The live `/health` endpoint was verified after rollback.
+- The Dockerfile was updated to configure `APP_VERSION=1.2.0` for Elastic Beanstalk deployments.
+- The latest deployment completed successfully, and the live `/health` endpoint returned `"status":"healthy"` and `"version":"1.2.0"`.
 
-**Note:** The test verified the rollback path for an intentionally failed health check. It does not prove recovery from every possible deployment failure.
+**Rollback test limitation:** The controlled test verified recovery from an intentionally failed health check. It does not prove recovery from every possible deployment failure.
+
+
 
 
 ## 🔐 Security and Cost Considerations
