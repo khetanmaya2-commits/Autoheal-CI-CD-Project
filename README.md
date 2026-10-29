@@ -295,7 +295,19 @@ The following has been verified during development:
 
 **Rollback test limitation:** The controlled test verified recovery from an intentionally failed health check. It does not prove recovery from every possible deployment failure.
 
+## 📸 Project Screenshots
 
+### 1. Jenkins CI/CD Pipeline
+![Jenkins CI/CD Pipeline](docs/screenshots/jenkins-pipeline.png)
+
+### 2. AWS Elastic Beanstalk Deployment
+![AWS Elastic Beanstalk Environment](docs/screenshots/elastic-beanstalk.png)
+
+### 3. Live Application Health Check
+![Application Health Check](docs/screenshots/health-check.png)
+
+### 4. Automatic Rollback Verification
+![Rollback Verification](docs/screenshots/rollback-verification.png)
 
 
 ## 🔐 Security and Cost Considerations
