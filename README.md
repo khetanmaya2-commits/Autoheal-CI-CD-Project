@@ -252,31 +252,46 @@ aws elasticbeanstalk describe-environments \
 
 ## 🔁 Rollback Strategy
 
-Before deployment, the pipeline captures the currently active Elastic Beanstalk version.
+Before deployment, the Jenkins pipeline captures the currently deployed Elastic Beanstalk application version.
 
-If a subsequent pipeline stage fails, the Jenkins `post` failure handler attempts to:
+If a pipeline stage fails, the Jenkins `post` failure handler attempts to:
 
-1. Update the environment to the previously captured version.
-2. Wait for the environment update to finish.
-3. Verify that Elastic Beanstalk reports the expected version label.
-4. Call the restored application's `/health` endpoint.
-5. Report whether the rollback verification succeeded.
+1. Restore the previously captured application version.
+2. Wait for the Elastic Beanstalk environment update to finish.
+3. Verify that the expected version label is deployed.
+4. Check the restored application's `/health` endpoint.
+5. Report the rollback verification result.
 
-The rollback mechanism is implemented in the Jenkinsfile. A controlled failure test is still required to confirm its behavior under real failure conditions.
+### Controlled Failure Test
+
+The rollback mechanism was tested by deliberately changing the health-check version expectation to an incorrect value.
+
+**Observed results:**
+- The deployment stages completed.
+- The Health Check stage failed as intentionally configured.
+- The Jenkins failure handler attempted rollback.
+- The console output reported that `autoheal-12` was restored and healthy.
+- The live `/health` endpoint was subsequently confirmed working.
+
+**Result:** The controlled test demonstrated that the pipeline can detect a health-check failure and restore a previous healthy deployment.
+
+This is a learning project. Further testing is recommended before using the pipeline for production workloads.
+
 
 ## ✅ Project Validation
 
 The following has been verified during development:
 
 - Automated Node.js tests passed.
-- Jenkins Build #10 completed successfully.
-- The application was deployed to AWS Elastic Beanstalk.
-- The live environment was reported healthy.
-- The `/health` endpoint returned a healthy response.
-- The `autoheal-10` application version exists in Elastic Beanstalk.
-- Rollback logic and post-rollback verification are present in the Jenkinsfile.
+- Jenkins Build #11 deployed the initial version in the recreated Elastic Beanstalk environment.
+- Jenkins Build #12 deployed application version `1.2.0`.
+- The live `/health` endpoint returned a healthy response.
+- A controlled health-check failure triggered the Jenkins rollback handler.
+- The rollback console output reported that `autoheal-12` was restored and healthy.
+- The live health endpoint was confirmed working after rollback.
 
-**Known limitation:** Successful rollback under a deliberately induced deployment or health-check failure has not yet been verified.
+**Note:** The test verified the rollback path for an intentionally failed health check. It does not prove recovery from every possible deployment failure.
+
 
 ## 🔐 Security and Cost Considerations
 
